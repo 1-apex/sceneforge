@@ -1,0 +1,104 @@
+/**
+ * TransformGizmo Component
+ * 
+ * Provides transform controls (translate, rotate, scale) for selected objects.
+ * Uses @react-three/drei's TransformControls.
+ * 
+ * CRITICAL: All transform changes MUST write back to Zustand state.
+ * The gizmo reads initial position from state and writes changes back.
+ * No local transform state is maintained.
+ * 
+ * Keyboard shortcuts:
+ * - W: Translate mode
+ * - E: Rotate mode  
+ * - R: Scale mode
+ */
+
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { TransformControls } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
+import { useSceneStore, selectSelectedObject } from '@/store/scene-store'
+import type { Object3D } from 'three'
+
+type TransformMode = 'translate' | 'rotate' | 'scale'
+
+export function TransformGizmo() {
+  const { scene } = useThree()
+  const selectedObject = useSceneStore(selectSelectedObject)
+  const updatePosition = useSceneStore((state) => state.updatePosition)
+  const updateRotation = useSceneStore((state) => state.updateRotation)
+  const updateScale = useSceneStore((state) => state.updateScale)
+
+  const [mode, setMode] = useState<TransformMode>('translate')
+
+  // Find the mesh in the scene by name (object.id)
+  const targetMesh = selectedObject
+    ? scene.getObjectByName(selectedObject.id)
+    : null
+
+  // Handle transform changes - write back to Zustand
+  const handleChange = useCallback(() => {
+    if (!targetMesh || !selectedObject) return
+
+    const mesh = targetMesh as Object3D
+
+    // Read transforms from the mesh and write to store
+    updatePosition(selectedObject.id, [
+      mesh.position.x,
+      mesh.position.y,
+      mesh.position.z,
+    ])
+    updateRotation(selectedObject.id, [
+      mesh.rotation.x,
+      mesh.rotation.y,
+      mesh.rotation.z,
+    ])
+    updateScale(selectedObject.id, [
+      mesh.scale.x,
+      mesh.scale.y,
+      mesh.scale.z,
+    ])
+  }, [targetMesh, selectedObject, updatePosition, updateRotation, updateScale])
+
+  // Keyboard shortcuts for transform modes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+      
+      switch (e.key.toLowerCase()) {
+        case 'w':
+          setMode('translate')
+          break
+        case 'e':
+          setMode('rotate')
+          break
+        case 'r':
+          setMode('scale')
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Don't render if nothing is selected or mesh not found
+  if (!selectedObject || !targetMesh) {
+    return null
+  }
+
+  return (
+    <TransformControls
+      object={targetMesh}
+      mode={mode}
+      onObjectChange={handleChange}
+      size={0.7}
+    />
+  )
+}
+
