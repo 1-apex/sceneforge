@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SceneForge Editor
 
-## Getting Started
+SceneForge is an open-source, browser-based 3D scene editor for React developers.
 
-First, run the development server:
+It allows you to visually design simple 3D scenes and export clean, editable React Three Fiber JSX — without touching Blender or writing transforms by hand.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Why SceneForge?
+
+3D on the web often feels disconnected from how frontend developers actually work.
+
+- Visual tools don’t generate usable code
+- Code-first workflows are slow and error-prone
+- Existing editors are either too simple or too complex
+
+SceneForge sits in the middle.
+
+---
+
+## What SceneForge is
+
+- A **design-time helper** for React Three Fiber
+- A visual way to place and configure basic 3D objects
+- A deterministic JSX exporter
+
+---
+
+## What SceneForge is NOT
+
+- A game engine
+- A full 3D modeling tool
+- A runtime dependency for your app
+
+The output is **plain React code**.  
+You own it. You can modify it. No lock-in.
+
+---
+
+## Current Features
+
+- 3D viewport with grid and axes
+- Primitive objects (box, sphere, cylinder)
+- Transform controls (move, rotate, scale)
+- Inspector panel for numeric editing
+- Scene tree
+- Live JSX export
+
+---
+
+## Example Output
+
+```tsx
+export function Scene() {
+  return (
+    <>
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#4a90d9" />
+      </mesh>
+    </>
+  )
+}
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Contributing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+SceneForge is early-stage and intentionally small in scope.
 
-## Learn More
+Contributions are welcome, especially around:
+- UX improvements
+- Code clarity and maintainability
+- Bug fixes and editor stability
 
-To learn more about Next.js, take a look at the following resources:
+If you’re planning to add new features or larger changes, please open an issue first to discuss the direction.  
+This helps keep the project focused and aligned with its original goal.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+At this stage, SceneForge prioritizes:
+- Simplicity over feature breadth
+- Readable JSX output over abstraction
+- Developer workflow over power-user complexity
