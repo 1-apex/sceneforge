@@ -32,6 +32,7 @@ export type SceneObject = {
 export type SceneState = {
   objects: SceneObject[]
   selectedObjectId: string | null
+  clipboard: SceneObject | null  // Stores copied object for paste
 }
 
 // ============================================================================
@@ -42,17 +43,21 @@ type SceneActions = {
   // Object CRUD operations
   addObject: (type: ObjectType) => void
   removeObject: (id: string) => void
-  
+
   // Selection
   selectObject: (id: string | null) => void
-  
+
   // Transform updates - write back from gizmos and inspector
   updatePosition: (id: string, position: [number, number, number]) => void
   updateRotation: (id: string, rotation: [number, number, number]) => void
   updateScale: (id: string, scale: [number, number, number]) => void
-  
+
   // Material updates
   updateColor: (id: string, color: string) => void
+
+  // Copy/Paste for symmetrical designs
+  copySelectedObject: () => void
+  pasteObject: () => void
 }
 
 // ============================================================================
@@ -90,10 +95,11 @@ const DEFAULT_COLORS: Record<ObjectType, string> = {
 // STORE IMPLEMENTATION
 // ============================================================================
 
-export const useSceneStore = create<SceneState & SceneActions>((set) => ({
-  // Initial state - empty scene, nothing selected
+export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
+  // Initial state - empty scene, nothing selected, empty clipboard
   objects: [],
   selectedObjectId: null,
+  clipboard: null,
 
   // Add a new object with default transforms
   addObject: (type) => set((state) => {
@@ -147,6 +153,36 @@ export const useSceneStore = create<SceneState & SceneActions>((set) => ({
       obj.id === id ? { ...obj, material: { ...obj.material, color } } : obj
     ),
   })),
+
+  // Copy selected object to clipboard
+  copySelectedObject: () => {
+    const state = get()
+    const selected = state.objects.find((obj) => obj.id === state.selectedObjectId)
+    if (selected) {
+      set({ clipboard: { ...selected } })
+    }
+  },
+
+  // Paste object from clipboard at viewport center (0,0,0)
+  pasteObject: () => set((state) => {
+    if (!state.clipboard) return state
+
+    const source = state.clipboard
+
+    const newObject: SceneObject = {
+      id: generateId(source.type),
+      type: source.type,
+      position: [0, 0, 0],             // Always at origin
+      rotation: [...source.rotation],  // Keep same rotation
+      scale: [...source.scale],        // Keep same scale
+      material: { ...source.material },
+    }
+
+    return {
+      objects: [...state.objects, newObject],
+      selectedObjectId: newObject.id, // Auto-select pasted object
+    }
+  }),
 }))
 
 // Export selector helpers for optimized subscriptions
