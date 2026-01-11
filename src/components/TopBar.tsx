@@ -1,6 +1,6 @@
 /**
  * TopBar Component
- * 
+ *
  * Provides project branding and object creation buttons.
  * Part of the main application header.
  */
@@ -23,7 +23,7 @@ export function TopBar() {
 
       {/* Center: Object Creation Buttons */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-[#737373] mr-2">Add Object:</span>
+        <span className="text-xs text-[#737373] mr-2">Add:</span>
         <button
           onClick={() => addObject('box')}
           className="px-3 py-1.5 text-xs bg-[#2d2d2d] hover:bg-[#363636] border border-[#3d3d3d] rounded transition-colors flex items-center gap-1.5"
@@ -50,7 +50,7 @@ export function TopBar() {
         </button>
       </div>
 
-      {/* Right: Placeholder for future features */}
+      {/* Right: Placeholder */}
       <div className="flex items-center gap-2 text-[#737373] text-xs">
         <span>Export</span>
       </div>
@@ -83,4 +83,3 @@ function CylinderIcon() {
     </svg>
   )
 }
-

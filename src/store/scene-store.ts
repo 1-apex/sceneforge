@@ -1,11 +1,11 @@
 /**
  * SceneForge - Zustand Scene State Store
- * 
+ *
  * This is the SINGLE SOURCE OF TRUTH for the entire application.
  * All UI components read from and write to this store.
  * React Three Fiber renders strictly from this state.
  * The JSX exporter serializes this state to code.
- * 
+ *
  * Architecture Decision: Using Zustand for its simplicity, performance,
  * and excellent TypeScript support. No need for context providers.
  */
@@ -16,11 +16,13 @@ import { create } from 'zustand'
 // TYPE DEFINITIONS - Exact schema as specified in requirements
 // ============================================================================
 
-export type ObjectType = 'box' | 'sphere' | 'cylinder'
+export type MeshType = 'box' | 'sphere' | 'cylinder'
+export type ObjectType = MeshType
 
-export type SceneObject = {
+// Mesh object (box, sphere, cylinder)
+export interface MeshObject {
   id: string
-  type: ObjectType
+  type: MeshType
   position: [number, number, number]
   rotation: [number, number, number]
   scale: [number, number, number]
@@ -28,6 +30,9 @@ export type SceneObject = {
     color: string
   }
 }
+
+// Scene object is just MeshObject for now
+export type SceneObject = MeshObject
 
 export type SceneState = {
   objects: SceneObject[]
@@ -52,7 +57,7 @@ type SceneActions = {
   updateRotation: (id: string, rotation: [number, number, number]) => void
   updateScale: (id: string, scale: [number, number, number]) => void
 
-  // Material updates
+  // Material/appearance updates
   updateColor: (id: string, color: string) => void
 
   // Copy/Paste for symmetrical designs
@@ -85,7 +90,7 @@ const DEFAULT_TRANSFORMS = {
   scale: [1, 1, 1] as [number, number, number],
 }
 
-const DEFAULT_COLORS: Record<ObjectType, string> = {
+const DEFAULT_MESH_COLORS: Record<MeshType, string> = {
   box: '#4a90d9',
   sphere: '#d94a4a',
   cylinder: '#4ad97a',
@@ -110,9 +115,10 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
       rotation: [...DEFAULT_TRANSFORMS.rotation],
       scale: [...DEFAULT_TRANSFORMS.scale],
       material: {
-        color: DEFAULT_COLORS[type],
+        color: DEFAULT_MESH_COLORS[type],
       },
     }
+
     return {
       objects: [...state.objects, newObject],
       selectedObjectId: newObject.id, // Auto-select newly created object
@@ -147,11 +153,12 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
     ),
   })),
 
-  // Material update
+  // Color update
   updateColor: (id, color) => set((state) => ({
-    objects: state.objects.map((obj) =>
-      obj.id === id ? { ...obj, material: { ...obj.material, color } } : obj
-    ),
+    objects: state.objects.map((obj) => {
+      if (obj.id !== id) return obj
+      return { ...obj, material: { ...obj.material, color } }
+    }),
   })),
 
   // Copy selected object to clipboard
@@ -159,7 +166,8 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
     const state = get()
     const selected = state.objects.find((obj) => obj.id === state.selectedObjectId)
     if (selected) {
-      set({ clipboard: { ...selected } })
+      // Deep clone the object
+      set({ clipboard: JSON.parse(JSON.stringify(selected)) })
     }
   },
 
@@ -169,13 +177,11 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
 
     const source = state.clipboard
 
+    // Clone the source object with new id and position at origin
     const newObject: SceneObject = {
+      ...JSON.parse(JSON.stringify(source)),
       id: generateId(source.type),
-      type: source.type,
-      position: [0, 0, 0],             // Always at origin
-      rotation: [...source.rotation],  // Keep same rotation
-      scale: [...source.scale],        // Keep same scale
-      material: { ...source.material },
+      position: [0, 0, 0] as [number, number, number],
     }
 
     return {
@@ -190,4 +196,3 @@ export const selectObjects = (state: SceneState) => state.objects
 export const selectSelectedObjectId = (state: SceneState) => state.selectedObjectId
 export const selectSelectedObject = (state: SceneState & SceneActions) =>
   state.objects.find((obj) => obj.id === state.selectedObjectId) ?? null
-

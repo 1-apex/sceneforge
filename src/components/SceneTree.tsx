@@ -1,6 +1,6 @@
 /**
  * SceneTree Component
- * 
+ *
  * Displays a hierarchical list of all scene objects.
  * Allows selection and deletion of objects.
  * Reads from Zustand store - no local state for scene data.
@@ -9,7 +9,12 @@
 'use client'
 
 import { useSceneStore } from '@/store/scene-store'
-import type { ObjectType } from '@/store/scene-store'
+import type { MeshType, SceneObject } from '@/store/scene-store'
+
+// Helper to get color from any scene object
+function getObjectColor(obj: SceneObject): string {
+  return obj.material.color
+}
 
 export function SceneTree() {
   const objects = useSceneStore((state) => state.objects)
@@ -48,14 +53,14 @@ export function SceneTree() {
                 >
                   {/* Object type icon */}
                   <ObjectTypeIcon type={obj.type} />
-                  
+
                   {/* Object name */}
                   <span className="flex-1 truncate">{obj.id}</span>
-                  
+
                   {/* Color indicator */}
                   <span
                     className="w-3 h-3 rounded-sm border border-[#3d3d3d]"
-                    style={{ backgroundColor: obj.material.color }}
+                    style={{ backgroundColor: getObjectColor(obj) }}
                   />
                   
                   {/* Delete button */}
@@ -84,9 +89,9 @@ export function SceneTree() {
   )
 }
 
-function ObjectTypeIcon({ type }: { type: ObjectType }) {
+function ObjectTypeIcon({ type }: { type: MeshType }) {
   const className = "w-3.5 h-3.5 opacity-60"
-  
+
   switch (type) {
     case 'box':
       return (
@@ -105,6 +110,12 @@ function ObjectTypeIcon({ type }: { type: ObjectType }) {
         <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <ellipse cx="12" cy="5" rx="8" ry="3" />
           <path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
+        </svg>
+      )
+    default:
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="1" />
         </svg>
       )
   }

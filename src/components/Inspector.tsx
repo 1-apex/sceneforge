@@ -1,6 +1,6 @@
 /**
  * Inspector Component
- * 
+ *
  * Displays and allows editing of the selected object's properties.
  * Provides numeric inputs for transforms and color picker for material.
  * All changes write directly to Zustand store - no local state.
@@ -32,6 +32,8 @@ export function Inspector() {
     )
   }
 
+  const objectColor = selectedObject.material.color
+
   return (
     <aside className="w-64 bg-[#242424] border-l border-[#3d3d3d] flex flex-col">
       {/* Header */}
@@ -47,8 +49,8 @@ export function Inspector() {
         <section>
           <h3 className="text-xs text-[#a3a3a3] mb-2 font-medium">Object</h3>
           <div className="bg-[#2d2d2d] rounded px-2 py-1.5 text-xs">
-            <span className="text-[#737373]">ID:</span>{' '}
-            <span className="text-[#e5e5e5]">{selectedObject.id}</span>
+            <span className="text-[#737373]">Type:</span>{' '}
+            <span className="text-[#e5e5e5] capitalize">{selectedObject.type}</span>
           </div>
         </section>
 
@@ -67,7 +69,7 @@ export function Inspector() {
           <Vector3Input
             value={selectedObject.rotation.map(r => r * (180 / Math.PI)) as [number, number, number]}
             onChange={(rot) => updateRotation(
-              selectedObject.id, 
+              selectedObject.id,
               rot.map(r => r * (Math.PI / 180)) as [number, number, number]
             )}
             step={1}
@@ -84,20 +86,19 @@ export function Inspector() {
           />
         </section>
 
-        {/* Material */}
+        {/* Color */}
         <section>
-          <h3 className="text-xs text-[#a3a3a3] mb-2 font-medium">Material</h3>
+          <h3 className="text-xs text-[#a3a3a3] mb-2 font-medium">Color</h3>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-[#737373]">Color:</label>
             <input
               type="color"
-              value={selectedObject.material.color}
+              value={objectColor}
               onChange={(e) => updateColor(selectedObject.id, e.target.value)}
               className="w-8 h-6 rounded cursor-pointer border-0 p-0"
             />
             <input
               type="text"
-              value={selectedObject.material.color}
+              value={objectColor}
               onChange={(e) => updateColor(selectedObject.id, e.target.value)}
               className="flex-1 w-full"
               placeholder="#ffffff"

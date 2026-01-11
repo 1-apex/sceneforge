@@ -4,8 +4,8 @@
  * Handles global keyboard shortcuts for the editor.
  *
  * Shortcuts:
- * - Ctrl+C: Copy selected object
- * - Ctrl+V: Paste object at origin (0,0,0)
+ * - Ctrl/Cmd + C: Copy selected object
+ * - Ctrl/Cmd + V: Paste object at origin (0,0,0)
  * - Delete/Backspace: Delete selected object
  */
 
@@ -25,27 +25,33 @@ export function useKeyboardShortcuts() {
       // Ignore if typing in an input field
       if (
         e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
       ) {
         return
       }
 
-      // Ctrl+C: Copy
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+      const isMod = e.ctrlKey || e.metaKey
+
+      // Ctrl/Cmd + C: Copy
+      if (isMod && e.key.toLowerCase() === 'c') {
         e.preventDefault()
         copySelectedObject()
+        return
       }
 
-      // Ctrl+V: Paste at origin
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      // Ctrl/Cmd + V: Paste at origin
+      if (isMod && e.key.toLowerCase() === 'v') {
         e.preventDefault()
         pasteObject()
+        return
       }
 
       // Delete or Backspace: Remove selected object
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedObjectId) {
         e.preventDefault()
         removeObject(selectedObjectId)
+        return
       }
     }
 
@@ -53,4 +59,3 @@ export function useKeyboardShortcuts() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [copySelectedObject, pasteObject, removeObject, selectedObjectId])
 }
-

@@ -1,13 +1,13 @@
 /**
  * Scene Component
- * 
+ *
  * Renders all scene objects from Zustand state.
  * This is a DECLARATIVE renderer - it reads from state only.
  * No local transform state allowed.
- * 
+ *
  * Architecture:
  * - Subscribes to Zustand objects array
- * - Renders each object as a SceneObject mesh
+ * - Renders each object as a mesh
  * - Handles click-to-select via raycasting
  */
 
@@ -15,7 +15,7 @@
 
 import { ThreeEvent } from '@react-three/fiber'
 import { useSceneStore } from '@/store/scene-store'
-import type { SceneObject as SceneObjectType, ObjectType } from '@/store/scene-store'
+import type { SceneObject as SceneObjectType, MeshType } from '@/store/scene-store'
 
 export function Scene() {
   const objects = useSceneStore((state) => state.objects)
@@ -30,7 +30,7 @@ export function Scene() {
   return (
     <group onPointerMissed={handlePointerMissed}>
       {objects.map((obj) => (
-        <SceneObject
+        <MeshSceneObject
           key={obj.id}
           object={obj}
           isSelected={obj.id === selectedObjectId}
@@ -42,13 +42,11 @@ export function Scene() {
 }
 
 /**
- * SceneObject Component
- * 
- * Renders a single scene object based on its type and properties.
- * All transforms come from Zustand state - no local state.
- * Selection is handled via click events (raycasting).
+ * MeshSceneObject Component
+ *
+ * Renders a mesh object (box, sphere, cylinder).
  */
-function SceneObject({
+function MeshSceneObject({
   object,
   isSelected,
   onSelect,
@@ -57,7 +55,6 @@ function SceneObject({
   isSelected: boolean
   onSelect: () => void
 }) {
-  // Handle click for selection
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
     onSelect()
@@ -71,10 +68,9 @@ function SceneObject({
       scale={object.scale}
       onClick={handleClick}
     >
-      <ObjectGeometry type={object.type} />
+      <MeshGeometry type={object.type} />
       <meshStandardMaterial
         color={object.material.color}
-        // Highlight selected objects with emissive
         emissive={isSelected ? '#404040' : '#000000'}
       />
     </mesh>
@@ -82,12 +78,11 @@ function SceneObject({
 }
 
 /**
- * ObjectGeometry Component
- * 
- * Returns the appropriate geometry based on object type.
- * Geometry parameters match the JSX export format.
+ * MeshGeometry Component
+ *
+ * Returns the appropriate geometry based on mesh type.
  */
-function ObjectGeometry({ type }: { type: ObjectType }) {
+function MeshGeometry({ type }: { type: MeshType }) {
   switch (type) {
     case 'box':
       return <boxGeometry args={[1, 1, 1]} />
@@ -99,4 +94,3 @@ function ObjectGeometry({ type }: { type: ObjectType }) {
       return <boxGeometry args={[1, 1, 1]} />
   }
 }
-
