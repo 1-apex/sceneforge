@@ -18,7 +18,7 @@ export function TopBar() {
       <div className="flex items-center gap-2">
         <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded" />
         <span className="font-semibold text-sm">SceneForge</span>
-        <span className="text-xs text-[#737373]">v1.0</span>
+        <span className="text-xs text-[#737373]">v1.1</span>
       </div>
 
       {/* Center: Object Creation Buttons */}
@@ -52,7 +52,7 @@ export function TopBar() {
 
       {/* Right: Placeholder */}
       <div className="flex items-center gap-2 text-[#737373] text-xs">
-        <span>Export</span>
+        {/* <span>Export</span> */}
       </div>
     </header>
   )
