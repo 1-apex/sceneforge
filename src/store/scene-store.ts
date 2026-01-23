@@ -25,7 +25,6 @@ export interface TextConfig {
   color: string
   alignment: 'left' | 'center' | 'right'
 }
-// ... (skip unchanged lines)
 
 const DEFAULT_MESH_COLORS: Record<MeshType, string> = {
   box: '#4a90d9',

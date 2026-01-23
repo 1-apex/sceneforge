@@ -14,7 +14,7 @@
 'use client'
 
 import { ThreeEvent } from '@react-three/fiber'
-import { Text, Center } from '@react-three/drei'
+import { Text, RoundedBox } from '@react-three/drei'
 import { useSceneStore } from '@/store/scene-store'
 import type { SceneObject as SceneObjectType, MeshType } from '@/store/scene-store'
 
@@ -66,28 +66,36 @@ function MeshSceneObject({
       name={object.id}
       position={object.position}
       rotation={object.rotation}
-    // We apply scale to the mesh inner child, NOT the group, 
-    // so the Text child is not distorted by scale.
     >
-      <mesh
-        scale={object.scale}
-        onClick={handleClick}
-      >
-        <MeshGeometry type={object.type} />
-        <meshStandardMaterial
-          color={object.material.color}
-          emissive={isSelected ? '#404040' : '#000000'}
-        />
-      </mesh>
+      {object.type === 'rounded-box' ? (
+        <RoundedBox
+          args={[1, 1, 1]} // Unit size
+          radius={0.15}
+          smoothness={4}
+          scale={object.scale}
+          onClick={handleClick}
+        >
+          <meshStandardMaterial
+            color={object.material.color}
+            emissive={isSelected ? '#404040' : '#000000'}
+          />
+        </RoundedBox>
+      ) : (
+        <mesh
+          scale={object.scale}
+          onClick={handleClick}
+        >
+          <MeshGeometry type={object.type} />
+          <meshStandardMaterial
+            color={object.material.color}
+            emissive={isSelected ? '#404040' : '#000000'}
+          />
+        </mesh>
+      )}
 
 
-
-      {/* Correct Implementation: */}
       {object.textConfig && (
         <group
-          // Position text at the SURFACE relative to the group center.
-          // Box/Cylinder/Sphere radius/extent is 0.5 * scale properly directioned.
-          // For now assuming front face (Z+).
           position={[0, 0, (object.scale[2] / 2) + 0.01]}
         >
           <Text
@@ -125,6 +133,8 @@ function MeshGeometry({ type }: { type: MeshType }) {
       return <sphereGeometry args={[0.5, 32, 32]} />
     case 'cylinder':
       return <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
+    case 'rounded-box':
+      return <boxGeometry args={[1, 1, 1]} />
     default:
       return <boxGeometry args={[1, 1, 1]} />
   }

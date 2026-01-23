@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Center } from '@react-three/drei'
+import { OrbitControls, Text, RoundedBox } from '@react-three/drei'
 import { useSceneStore, selectEditingTextObject, TextConfig, MeshType } from '@/store/scene-store'
 
 export function TextEditorModal() {
@@ -199,27 +199,45 @@ export function TextEditorModal() {
 }
 
 function PreviewMesh({ type, color, scale }: { type: MeshType; color: string, scale: [number, number, number] }) {
-    let geometry
     switch (type) {
         case 'box':
-            geometry = <boxGeometry args={[1, 1, 1]} />
-            break
+            return (
+                <mesh scale={scale}>
+                    <boxGeometry args={[1, 1, 1]} />
+                    <meshStandardMaterial color={color} />
+                </mesh>
+            )
         case 'sphere':
-            geometry = <sphereGeometry args={[0.5, 32, 32]} />
-            break
+            return (
+                <mesh scale={scale}>
+                    <sphereGeometry args={[0.5, 32, 32]} />
+                    <meshStandardMaterial color={color} />
+                </mesh>
+            )
         case 'cylinder':
-            // Cylinders defined differently in threejs (radiusTop, radiusBottom, height, segments)
-            // We use standard unit size
-            geometry = <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
-            break
+            return (
+                <mesh scale={scale}>
+                    <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
+                    <meshStandardMaterial color={color} />
+                </mesh>
+            )
+        case 'rounded-box':
+            return (
+                <RoundedBox
+                    args={[1, 1, 1]}
+                    radius={0.15}
+                    smoothness={4}
+                    scale={scale}
+                >
+                    <meshStandardMaterial color={color} />
+                </RoundedBox>
+            )
         default:
-            geometry = <boxGeometry args={[1, 1, 1]} />
+            return (
+                <mesh scale={scale}>
+                    <boxGeometry args={[1, 1, 1]} />
+                    <meshStandardMaterial color={color} />
+                </mesh>
+            )
     }
-
-    return (
-        <mesh scale={scale}>
-            {geometry}
-            <meshStandardMaterial color={color} />
-        </mesh>
-    )
 }
