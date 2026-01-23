@@ -19,6 +19,13 @@ import { create } from 'zustand'
 export type MeshType = 'box' | 'sphere' | 'cylinder'
 export type ObjectType = MeshType
 
+export interface TextConfig {
+  content: string
+  fontSize: number
+  color: string
+  alignment: 'left' | 'center' | 'right'
+}
+
 // Mesh object (box, sphere, cylinder)
 export interface MeshObject {
   id: string
@@ -29,6 +36,7 @@ export interface MeshObject {
   material: {
     color: string
   }
+  textConfig?: TextConfig
 }
 
 // Scene object is just MeshObject for now
@@ -37,6 +45,7 @@ export type SceneObject = MeshObject
 export type SceneState = {
   objects: SceneObject[]
   selectedObjectId: string | null
+  editingTextObjectId: string | null // Controls the text editor modal
   clipboard: SceneObject | null  // Stores copied object for paste
 }
 
@@ -51,6 +60,7 @@ type SceneActions = {
 
   // Selection
   selectObject: (id: string | null) => void
+  setEditingTextObjectId: (id: string | null) => void
 
   // Transform updates - write back from gizmos and inspector
   updatePosition: (id: string, position: [number, number, number]) => void
@@ -59,6 +69,7 @@ type SceneActions = {
 
   // Material/appearance updates
   updateColor: (id: string, color: string) => void
+  updateTextConfig: (id: string, config: TextConfig | undefined) => void
 
   // Copy/Paste for symmetrical designs
   copySelectedObject: () => void
@@ -104,6 +115,7 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
   // Initial state - empty scene, nothing selected, empty clipboard
   objects: [],
   selectedObjectId: null,
+  editingTextObjectId: null,
   clipboard: null,
 
   // Add a new object with default transforms
@@ -117,6 +129,7 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
       material: {
         color: DEFAULT_MESH_COLORS[type],
       },
+      // No text config by default
     }
 
     return {
@@ -129,10 +142,14 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
   removeObject: (id) => set((state) => ({
     objects: state.objects.filter((obj) => obj.id !== id),
     selectedObjectId: state.selectedObjectId === id ? null : state.selectedObjectId,
+    editingTextObjectId: state.editingTextObjectId === id ? null : state.editingTextObjectId,
   })),
 
   // Set currently selected object
   selectObject: (id) => set({ selectedObjectId: id }),
+
+  // Set object currently being edited for text
+  setEditingTextObjectId: (id) => set({ editingTextObjectId: id }),
 
   // Transform updates - immutably update the specific object
   updatePosition: (id, position) => set((state) => ({
@@ -158,6 +175,14 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
     objects: state.objects.map((obj) => {
       if (obj.id !== id) return obj
       return { ...obj, material: { ...obj.material, color } }
+    }),
+  })),
+
+  // Text Config Update
+  updateTextConfig: (id, config) => set((state) => ({
+    objects: state.objects.map((obj) => {
+      if (obj.id !== id) return obj
+      return { ...obj, textConfig: config }
     }),
   })),
 
@@ -194,5 +219,8 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
 // Export selector helpers for optimized subscriptions
 export const selectObjects = (state: SceneState) => state.objects
 export const selectSelectedObjectId = (state: SceneState) => state.selectedObjectId
+export const selectEditingTextObjectId = (state: SceneState) => state.editingTextObjectId
 export const selectSelectedObject = (state: SceneState & SceneActions) =>
   state.objects.find((obj) => obj.id === state.selectedObjectId) ?? null
+export const selectEditingTextObject = (state: SceneState & SceneActions) =>
+  state.objects.find((obj) => obj.id === state.editingTextObjectId) ?? null
