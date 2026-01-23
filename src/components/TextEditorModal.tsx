@@ -78,7 +78,7 @@ export function TextEditorModal() {
                                     anchorY="middle"
                                     textAlign={config.alignment}
                                     maxWidth={editingObject.scale[0] * 0.9}
-                                    // @ts-ignore
+                                    // @ts-expect-error curveRadius is not a valid prop
                                     curveRadius={
                                         (editingObject.type === 'cylinder' || editingObject.type === 'sphere')
                                             ? -editingObject.scale[0] / 2

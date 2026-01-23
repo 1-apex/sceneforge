@@ -105,7 +105,7 @@ function MeshSceneObject({
             anchorY="middle"
             textAlign={object.textConfig.alignment}
             maxWidth={object.scale[0] * 0.9} // Constrain to object width
-            // @ts-ignore
+            // @ts-expect-error curveRadius is not a valid prop
             curveRadius={
               (object.type === 'cylinder' || object.type === 'sphere')
                 ? -object.scale[0] / 2

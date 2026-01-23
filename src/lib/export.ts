@@ -16,7 +16,7 @@
  * - Stable property ordering
  */
 
-import type { SceneObject, MeshObject, TextConfig } from '@/store/scene-store'
+import type { SceneObject, MeshObject } from '@/store/scene-store'
 
 // ============================================================================
 // EXPORT OPTIONS
