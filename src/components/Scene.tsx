@@ -14,6 +14,7 @@
 'use client'
 
 import { ThreeEvent } from '@react-three/fiber'
+import { Text, Center } from '@react-three/drei'
 import { useSceneStore } from '@/store/scene-store'
 import type { SceneObject as SceneObjectType, MeshType } from '@/store/scene-store'
 
@@ -61,19 +62,53 @@ function MeshSceneObject({
   }
 
   return (
-    <mesh
+    <group
       name={object.id}
       position={object.position}
       rotation={object.rotation}
-      scale={object.scale}
-      onClick={handleClick}
+    // We apply scale to the mesh inner child, NOT the group, 
+    // so the Text child is not distorted by scale.
     >
-      <MeshGeometry type={object.type} />
-      <meshStandardMaterial
-        color={object.material.color}
-        emissive={isSelected ? '#404040' : '#000000'}
-      />
-    </mesh>
+      <mesh
+        scale={object.scale}
+        onClick={handleClick}
+      >
+        <MeshGeometry type={object.type} />
+        <meshStandardMaterial
+          color={object.material.color}
+          emissive={isSelected ? '#404040' : '#000000'}
+        />
+      </mesh>
+
+
+
+      {/* Correct Implementation: */}
+      {object.textConfig && (
+        <group
+          // Position text at the SURFACE relative to the group center.
+          // Box/Cylinder/Sphere radius/extent is 0.5 * scale properly directioned.
+          // For now assuming front face (Z+).
+          position={[0, 0, (object.scale[2] / 2) + 0.01]}
+        >
+          <Text
+            fontSize={object.textConfig.fontSize}
+            color={object.textConfig.color}
+            anchorX={object.textConfig.alignment}
+            anchorY="middle"
+            textAlign={object.textConfig.alignment}
+            maxWidth={object.scale[0] * 0.9} // Constrain to object width
+            // @ts-ignore
+            curveRadius={
+              (object.type === 'cylinder' || object.type === 'sphere')
+                ? -object.scale[0] / 2
+                : undefined
+            }
+          >
+            {object.textConfig.content}
+          </Text>
+        </group>
+      )}
+    </group>
   )
 }
 
@@ -87,9 +122,9 @@ function MeshGeometry({ type }: { type: MeshType }) {
     case 'box':
       return <boxGeometry args={[1, 1, 1]} />
     case 'sphere':
-      return <sphereGeometry args={[1, 32, 32]} />
+      return <sphereGeometry args={[0.5, 32, 32]} />
     case 'cylinder':
-      return <cylinderGeometry args={[1, 1, 2, 32]} />
+      return <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
     default:
       return <boxGeometry args={[1, 1, 1]} />
   }

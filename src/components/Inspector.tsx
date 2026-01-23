@@ -105,8 +105,20 @@ export function Inspector() {
             />
           </div>
         </section>
+
+
+        {/* Text Overlay */}
+        <section>
+          <h3 className="text-xs text-[#a3a3a3] mb-2 font-medium">Text Overlay</h3>
+          <button
+            onClick={() => useSceneStore.getState().setEditingTextObjectId(selectedObject.id)}
+            className="w-full px-3 py-1.5 bg-[#3d3d3d] hover:bg-[#4a4a4a] text-xs text-[#e5e5e5] rounded transition-colors border border-[#525252]"
+          >
+            {selectedObject.textConfig ? 'Edit Text' : 'Add Text'}
+          </button>
+        </section>
       </div>
-    </aside>
+    </aside >
   )
 }
 

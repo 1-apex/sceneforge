@@ -24,6 +24,7 @@ import { TopBar } from './TopBar'
 import { SceneTree } from './SceneTree'
 import { Inspector } from './Inspector'
 import { CodePanel } from './CodePanel'
+import { TextEditorModal } from './TextEditorModal'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 // Dynamic import for Viewport to avoid SSR issues with Three.js
@@ -60,6 +61,10 @@ export function Editor() {
         {/* Right Sidebar - Inspector */}
         <Inspector />
       </div>
+
+      {/* Text Editor Modal - Global overlay */}
+      <TextEditorModal />
+
 
       {/* Bottom Panel - Live JSX Code */}
       <CodePanel />
