@@ -16,7 +16,7 @@ import { create } from 'zustand'
 // TYPE DEFINITIONS - Exact schema as specified in requirements
 // ============================================================================
 
-export type MeshType = 'box' | 'sphere' | 'cylinder'
+export type MeshType = 'box' | 'sphere' | 'cylinder' | 'rounded-box'
 export type ObjectType = MeshType
 
 export interface TextConfig {
@@ -24,6 +24,14 @@ export interface TextConfig {
   fontSize: number
   color: string
   alignment: 'left' | 'center' | 'right'
+}
+// ... (skip unchanged lines)
+
+const DEFAULT_MESH_COLORS: Record<MeshType, string> = {
+  box: '#4a90d9',
+  sphere: '#d94a4a',
+  cylinder: '#4ad97a',
+  'rounded-box': '#9d4ad9',
 }
 
 // Mesh object (box, sphere, cylinder)
@@ -101,11 +109,7 @@ const DEFAULT_TRANSFORMS = {
   scale: [1, 1, 1] as [number, number, number],
 }
 
-const DEFAULT_MESH_COLORS: Record<MeshType, string> = {
-  box: '#4a90d9',
-  sphere: '#d94a4a',
-  cylinder: '#4ad97a',
-}
+
 
 // ============================================================================
 // STORE IMPLEMENTATION
