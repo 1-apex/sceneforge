@@ -16,7 +16,7 @@
  * - Stable property ordering
  */
 
-import type { SceneObject, MeshObject } from '@/store/scene-store'
+import type { SceneObject, MeshObject, TextConfig } from '@/store/scene-store'
 
 // ============================================================================
 // EXPORT OPTIONS
@@ -52,11 +52,40 @@ function formatVector(v: [number, number, number]): string {
 /** Get geometry JSX for mesh type */
 function getGeometry(type: string): string {
   switch (type) {
-    case 'box': return '<boxGeometry />'
-    case 'sphere': return '<sphereGeometry args={[1, 32, 32]} />'
-    case 'cylinder': return '<cylinderGeometry args={[1, 1, 2, 32]} />'
-    default: return '<boxGeometry />'
+    case 'box': return '<boxGeometry args={[1, 1, 1]} />'
+    case 'sphere': return '<sphereGeometry args={[0.5, 32, 32]} />'
+    case 'cylinder': return '<cylinderGeometry args={[0.5, 0.5, 1, 32]} />'
+    // rounded-box is handled via component, not geometry here
+    default: return '<boxGeometry args={[1, 1, 1]} />'
   }
+}
+
+// ============================================================================
+// TEXT CONFIG GENERATION
+// ============================================================================
+
+function generateText(obj: MeshObject, indent: string): string {
+  if (!obj.textConfig) return ''
+
+  const config = obj.textConfig
+  const zPos = (obj.scale[2] / 2) + 0.01 // Match Scene.tsx logic EXACTLY
+  const curveProp = (obj.type === 'cylinder' || obj.type === 'sphere')
+    ? `\n${indent}    curveRadius={${formatNum(-obj.scale[0] / 2)}}`
+    : ''
+
+  return `
+${indent}  <group position={[0, 0, ${formatNum(zPos)}]}>
+${indent}    <Text
+${indent}      fontSize={${formatNum(config.fontSize)}}
+${indent}      color="${config.color}"
+${indent}      anchorX="${config.alignment}"
+${indent}      anchorY="middle"
+${indent}      textAlign="${config.alignment}"
+${indent}      maxWidth={${formatNum(obj.scale[0] * 0.9)}}${curveProp}
+${indent}    >
+${indent}      ${config.content}
+${indent}    </Text>
+${indent}  </group>`
 }
 
 // ============================================================================
@@ -65,22 +94,35 @@ function getGeometry(type: string): string {
 
 /** Generate JSX for a single mesh object */
 function generateMesh(obj: MeshObject, indent: string): string {
-  const lines = [
-    `${indent}<mesh`,
+  const textJSX = generateText(obj, indent)
+
+  if (obj.type === 'rounded-box') {
+    return [
+      `${indent}<RoundedBox`,
+      `${indent}  args={[1, 1, 1]}`,
+      `${indent}  radius={0.15}`,
+      `${indent}  smoothness={4}`,
+      `${indent}  position={${formatVector(obj.position)}}`,
+      `${indent}  rotation={${formatVector(obj.rotation)}}`,
+      `${indent}  scale={${formatVector(obj.scale)}}`,
+      `${indent}>`,
+      `${indent}  <meshStandardMaterial color="${obj.material.color}" />${textJSX}`,
+      `${indent}</RoundedBox>`,
+    ].join('\n')
+  }
+
+  // Standard Mesh
+  return [
+    `${indent}<group`,
     `${indent}  position={${formatVector(obj.position)}}`,
     `${indent}  rotation={${formatVector(obj.rotation)}}`,
-    `${indent}  scale={${formatVector(obj.scale)}}`,
     `${indent}>`,
-    `${indent}  ${getGeometry(obj.type)}`,
-    `${indent}  <meshStandardMaterial color="${obj.material.color}" />`,
-    `${indent}</mesh>`,
-  ]
-  return lines.join('\n')
-}
-
-/** Generate JSX for any scene object */
-function generateObject(obj: SceneObject, indent: string): string {
-  return generateMesh(obj, indent)
+    `${indent}  <mesh scale={${formatVector(obj.scale)}}>`,
+    `${indent}    ${getGeometry(obj.type)}`,
+    `${indent}    <meshStandardMaterial color="${obj.material.color}" />`,
+    `${indent}  </mesh>${textJSX}`,
+    `${indent}</group>`,
+  ].join('\n')
 }
 
 // ============================================================================
@@ -93,25 +135,32 @@ export function generateJSX(
   options: ExportOptions = { mode: 'sceneOnly' }
 ): string {
   const { mode } = options
-
-  // Determine indent based on mode (canvas wrapper adds nesting)
   const objectIndent = mode === 'withCanvas' ? '        ' : '      '
+
+  // Analyze used features for imports
+  const hasText = objects.some(o => !!o.textConfig)
+  const hasRoundedBox = objects.some(o => o.type === 'rounded-box')
+
+  const dreiImports: string[] = []
+  if (hasText) dreiImports.push('Text')
+  if (hasRoundedBox) dreiImports.push('RoundedBox')
+  if (mode === 'withCanvas') dreiImports.push('OrbitControls')
 
   // Generate object JSX
   const objectsJSX = objects.length > 0
-    ? objects.map(obj => generateObject(obj, objectIndent)).join('\n')
+    ? objects.map(obj => generateMesh(obj, objectIndent)).join('\n')
     : `${objectIndent}{/* No objects in scene */}`
 
   // Build output based on mode
   switch (mode) {
     case 'sceneOnly':
-      return generateSceneOnly(objectsJSX)
+      return generateSceneOnly(objectsJSX, dreiImports)
     case 'withLights':
-      return generateWithLights(objectsJSX)
+      return generateWithLights(objectsJSX, dreiImports)
     case 'withCanvas':
-      return generateWithCanvas(objectsJSX)
+      return generateWithCanvas(objectsJSX, dreiImports)
     default:
-      return generateSceneOnly(objectsJSX)
+      return generateSceneOnly(objectsJSX, dreiImports)
   }
 }
 
@@ -119,15 +168,19 @@ export function generateJSX(
 // MODE-SPECIFIC GENERATORS
 // ============================================================================
 
-/** Scene Only - Just objects, no lights or canvas */
-function generateSceneOnly(objects: string): string {
+function getImports(dreiImports: string[]): string {
+  if (dreiImports.length === 0) return ''
+  return `import { ${dreiImports.join(', ')} } from '@react-three/drei'`
+}
+
+function generateSceneOnly(objects: string, dreiImports: string[]): string {
+  const imports = getImports(dreiImports)
   return `/**
  * Scene Component
  * Generated by SceneForge
- *
- * Usage: Import into your React Three Fiber Canvas.
- * Add your own lighting as needed.
  */
+
+${imports}
 
 export function Scene() {
   return (
@@ -139,24 +192,22 @@ ${objects}
 `
 }
 
-/** With Lights - Objects + standard lighting setup */
-function generateWithLights(objects: string): string {
+function generateWithLights(objects: string, dreiImports: string[]): string {
+  const imports = getImports(dreiImports)
   return `/**
  * Scene Component
  * Generated by SceneForge
- *
- * Usage: Import into your React Three Fiber Canvas.
  * Includes standard lighting setup.
  */
 
+${imports}
+
 export function Scene() {
   return (
     <>
-      {/* Lighting */}
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 10, 5]} intensity={0.8} />
 
-      {/* Scene Objects */}
 ${objects}
     </>
   )
@@ -164,35 +215,23 @@ ${objects}
 `
 }
 
-/** With Canvas - Full wrapper with Canvas, lights, and controls */
-function generateWithCanvas(objects: string): string {
+function generateWithCanvas(objects: string, dreiImports: string[]): string {
+  const imports = getImports(dreiImports)
   return `/**
  * SceneCanvas Component
  * Generated by SceneForge
- *
- * Usage: Drop this component directly into your React app.
- * The Canvas fills its parent container - wrap in a sized div:
- *   <div style={{ width: '100%', height: '400px' }}>
- *     <SceneCanvas />
- *   </div>
- *
- * Includes Canvas, lighting, and camera controls.
  */
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+${imports}
 
 export function SceneCanvas() {
   return (
     <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
-      {/* Lighting */}
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 10, 5]} intensity={0.8} />
-
-      {/* Camera Controls */}
       <OrbitControls />
 
-      {/* Scene Objects */}
 ${objects}
     </Canvas>
   )
