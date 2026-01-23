@@ -27,8 +27,6 @@ import { CodePanel } from './CodePanel'
 import { TextEditorModal } from './TextEditorModal'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
-// Dynamic import for Viewport to avoid SSR issues with Three.js
-// This is required because Three.js uses browser-only APIs
 const Viewport = dynamic(
   () => import('./Viewport').then((mod) => mod.Viewport),
   {
