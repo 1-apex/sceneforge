@@ -16,7 +16,7 @@ export function TopBar() {
     <header className="h-12 bg-[#242424] border-b border-[#3d3d3d] flex items-center justify-between px-4">
       {/* Left: Branding */}
       <div className="flex items-center gap-2">
-        <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded" />
+        <img src="/sceneforge_logo.png" alt="SceneForge Logo" className="w-6 h-6 object-contain" />
         <span className="font-semibold text-sm">SceneForge</span>
         <span className="text-xs text-[#737373]">v1.2</span>
       </div>
