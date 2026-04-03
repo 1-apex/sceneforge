@@ -10,7 +10,8 @@ export function TextEditorModal() {
     const setEditingTextObjectId = useSceneStore((state) => state.setEditingTextObjectId)
     const updateTextConfig = useSceneStore((state) => state.updateTextConfig)
 
-    // Local state for the form, initialized from the object's current config or defaults
+    const isEditing = !!editingObject?.textConfig
+
     const [config, setConfig] = useState<TextConfig>({
         content: '',
         fontSize: 0.5,
@@ -24,11 +25,10 @@ export function TextEditorModal() {
             if (editingObject.textConfig) {
                 setConfig(editingObject.textConfig)
             } else {
-                // Default values - proportional to object scale
                 const minDimension = Math.min(editingObject.scale[0], editingObject.scale[1])
                 setConfig({
                     content: 'Text',
-                    fontSize: minDimension * 0.4, // 40% of smallest dimension
+                    fontSize: minDimension * 0.4,
                     color: '#ffffff',
                     alignment: 'center'
                 })
@@ -47,6 +47,11 @@ export function TextEditorModal() {
         handleClose()
     }
 
+    const handleRemoveText = () => {
+        updateTextConfig(editingObject.id, undefined)
+        handleClose()
+    }
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="w-[800px] h-[500px] bg-[#1e1e1e] border border-[#3d3d3d] rounded-lg shadow-2xl flex overflow-hidden">
@@ -61,15 +66,12 @@ export function TextEditorModal() {
                         <directionalLight position={[10, 10, 5]} intensity={1} />
                         <OrbitControls makeDefault enablePan={false} />
 
-                        {/* Render Object & Text */}
-
                         <group>
                             <PreviewMesh
                                 type={editingObject.type}
                                 color={editingObject.material.color}
                                 scale={editingObject.scale}
                             />
-                            {/* Text positioning - tightly on surface */}
                             <group position={[0, 0, (editingObject.scale[2] / 2) + 0.01]}>
                                 <Text
                                     fontSize={config.fontSize}
@@ -93,30 +95,34 @@ export function TextEditorModal() {
                         <gridHelper args={[10, 10, '#333', '#222']} />
                     </Canvas>
                     <div className="absolute bottom-2 left-0 w-full text-center text-[10px] text-[#525252]">
-                        Drag to rotate • Scroll to zoom
+                        Drag to rotate · Scroll to zoom
                     </div>
                 </div>
 
                 {/* Right Panel - Controls */}
                 <div className="w-80 flex flex-col bg-[#242424]">
                     <div className="h-12 border-b border-[#3d3d3d] flex items-center px-4 justify-between">
-                        <h2 className="text-sm font-medium text-[#e5e5e5]">Add Text</h2>
+                        <h2 className="text-sm font-medium text-[#e5e5e5]">
+                            {isEditing ? 'Edit Text' : 'Add Text'}
+                        </h2>
                         <button
                             onClick={handleClose}
-                            className="text-[#737373] hover:text-white transition-colors"
+                            className="text-[#737373] hover:text-white transition-colors w-6 h-6 flex items-center justify-center rounded hover:bg-[#3d3d3d]"
+                            title="Close"
                         >
                             ✕
                         </button>
                     </div>
 
-                    <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+                    <div className="flex-1 p-4 space-y-5 overflow-y-auto">
+
                         {/* Content Input */}
                         <div className="space-y-2">
                             <label className="text-xs text-[#a3a3a3]">Text Content</label>
                             <textarea
                                 value={config.content}
                                 onChange={(e) => setConfig({ ...config, content: e.target.value })}
-                                className="w-full bg-[#1e1e1e] border border-[#3d3d3d] rounded p-2 text-sm text-white focus:outline-none focus:border-[#4a90d9] min-h-[80px]"
+                                className="w-full bg-[#1e1e1e] border border-[#3d3d3d] rounded p-2 text-sm text-white focus:outline-none focus:border-[#4a90d9] min-h-[80px] resize-none"
                                 placeholder="Enter text..."
                             />
                         </div>
@@ -125,13 +131,13 @@ export function TextEditorModal() {
                         <div className="space-y-2">
                             <div className="flex justify-between text-xs">
                                 <label className="text-[#a3a3a3]">Size</label>
-                                <span className="text-[#737373]">{config.fontSize.toFixed(1)}</span>
+                                <span className="text-[#737373] font-mono">{config.fontSize.toFixed(1)}</span>
                             </div>
                             <input
                                 type="range"
                                 min="0.1"
                                 max="2"
-                                step="0.1"
+                                step="0.05"
                                 value={config.fontSize}
                                 onChange={(e) => setConfig({ ...config, fontSize: parseFloat(e.target.value) })}
                                 className="w-full h-1 bg-[#3d3d3d] rounded-lg appearance-none cursor-pointer accent-[#4a90d9]"
@@ -146,7 +152,7 @@ export function TextEditorModal() {
                                     type="color"
                                     value={config.color}
                                     onChange={(e) => setConfig({ ...config, color: e.target.value })}
-                                    className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                                    className="w-8 h-8 rounded cursor-pointer border-0 p-0 flex-shrink-0"
                                 />
                                 <input
                                     type="text"
@@ -165,10 +171,11 @@ export function TextEditorModal() {
                                     <button
                                         key={align}
                                         onClick={() => setConfig({ ...config, alignment: align })}
-                                        className={`text-xs py-1 rounded capitalize transition-colors ${config.alignment === align
-                                            ? 'bg-[#3d3d3d] text-white'
-                                            : 'text-[#737373] hover:text-[#a3a3a3]'
-                                            }`}
+                                        className={`text-xs py-1 rounded capitalize transition-colors ${
+                                            config.alignment === align
+                                                ? 'bg-[#4a90d9] text-white'
+                                                : 'text-[#737373] hover:text-[#a3a3a3]'
+                                        }`}
                                     >
                                         {align}
                                     </button>
@@ -178,19 +185,29 @@ export function TextEditorModal() {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="p-4 border-t border-[#3d3d3d] flex gap-3">
-                        <button
-                            onClick={handleClose}
-                            className="flex-1 px-4 py-2 text-xs font-medium text-[#e5e5e5] bg-[#3d3d3d] hover:bg-[#4a4a4a] rounded transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleApply}
-                            className="flex-1 px-4 py-2 text-xs font-medium text-white bg-[#4a90d9] hover:bg-[#3a7bc2] rounded transition-colors"
-                        >
-                            Apply Changes
-                        </button>
+                    <div className="p-4 border-t border-[#3d3d3d] space-y-2">
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleClose}
+                                className="flex-1 px-4 py-2 text-xs font-medium text-[#e5e5e5] bg-[#3d3d3d] hover:bg-[#4a4a4a] rounded transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleApply}
+                                className="flex-1 px-4 py-2 text-xs font-medium text-white bg-[#4a90d9] hover:bg-[#3a7bc2] rounded transition-colors"
+                            >
+                                Apply
+                            </button>
+                        </div>
+                        {isEditing && (
+                            <button
+                                onClick={handleRemoveText}
+                                className="w-full px-4 py-2 text-xs font-medium text-red-400 bg-transparent hover:bg-red-500/10 border border-red-500/30 hover:border-red-500/60 rounded transition-colors"
+                            >
+                                Remove Text
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -223,12 +240,7 @@ function PreviewMesh({ type, color, scale }: { type: MeshType; color: string, sc
             )
         case 'rounded-box':
             return (
-                <RoundedBox
-                    args={[1, 1, 1]}
-                    radius={0.15}
-                    smoothness={4}
-                    scale={scale}
-                >
+                <RoundedBox args={[1, 1, 1]} radius={0.15} smoothness={4} scale={scale}>
                     <meshStandardMaterial color={color} />
                 </RoundedBox>
             )
