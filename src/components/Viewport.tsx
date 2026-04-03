@@ -156,6 +156,15 @@ function ShortcutsIndicator({ cameraMode }: { cameraMode: CameraMode }) {
         <span className="text-[#525252]">|</span>
         <span className="text-purple-400">Ctrl+V</span>
         <span className="text-[#525252]">Paste</span>
+        <span className="text-[#525252]">|</span>
+        <span className="text-orange-400">Ctrl+Z</span>
+        <span className="text-[#525252]">Undo</span>
+        <span className="text-[#525252]">|</span>
+        <span className="text-orange-400">Ctrl+Y</span>
+        <span className="text-[#525252]">Redo</span>
+        <span className="text-[#525252]">|</span>
+        <span className="text-red-400">Del</span>
+        <span className="text-[#525252]">Delete</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-[#737373]">Camera:</span>

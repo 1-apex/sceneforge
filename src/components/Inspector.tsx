@@ -4,10 +4,15 @@
  * Displays and allows editing of the selected object's properties.
  * Provides numeric inputs for transforms and color picker for material.
  * All changes write directly to Zustand store - no local state.
+ *
+ * Undo/Redo integration:
+ * - pushHistory() is called on input focus so the full edit session (from
+ *   the moment you click into a field until you click away) is one undo step.
  */
 
 'use client'
 
+import { useRef } from 'react'
 import { useSceneStore, selectSelectedObject } from '@/store/scene-store'
 
 export function Inspector() {
@@ -16,6 +21,22 @@ export function Inspector() {
   const updateRotation = useSceneStore((state) => state.updateRotation)
   const updateScale = useSceneStore((state) => state.updateScale)
   const updateColor = useSceneStore((state) => state.updateColor)
+  const pushHistory = useSceneStore((state) => state.pushHistory)
+
+  // Track whether we've already pushed history for the current focus session
+  // so rapid input changes don't spam the history stack.
+  const historyPushedRef = useRef(false)
+
+  const handleFieldFocus = () => {
+    if (!historyPushedRef.current) {
+      pushHistory()
+      historyPushedRef.current = true
+    }
+  }
+
+  const handleFieldBlur = () => {
+    historyPushedRef.current = false
+  }
 
   if (!selectedObject) {
     return (
@@ -45,12 +66,13 @@ export function Inspector() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
+
         {/* Object Info */}
         <section>
           <h3 className="text-xs text-[#a3a3a3] mb-2 font-medium">Object</h3>
           <div className="bg-[#2d2d2d] rounded px-2 py-1.5 text-xs">
-            <span className="text-[#737373]">Type:</span>{' '}
-            <span className="text-[#e5e5e5] capitalize">{selectedObject.type}</span>
+            <span className="text-[#737373]">ID:</span>{' '}
+            <span className="text-[#e5e5e5] font-mono">{selectedObject.id}</span>
           </div>
         </section>
 
@@ -60,12 +82,14 @@ export function Inspector() {
           <Vector3Input
             value={selectedObject.position}
             onChange={(pos) => updatePosition(selectedObject.id, pos)}
+            onFocus={handleFieldFocus}
+            onBlur={handleFieldBlur}
           />
         </section>
 
         {/* Rotation (displayed in degrees) */}
         <section>
-          <h3 className="text-xs text-[#a3a3a3] mb-2 font-medium">Rotation (degrees)</h3>
+          <h3 className="text-xs text-[#a3a3a3] mb-2 font-medium">Rotation (°)</h3>
           <Vector3Input
             value={selectedObject.rotation.map(r => r * (180 / Math.PI)) as [number, number, number]}
             onChange={(rot) => updateRotation(
@@ -73,6 +97,8 @@ export function Inspector() {
               rot.map(r => r * (Math.PI / 180)) as [number, number, number]
             )}
             step={1}
+            onFocus={handleFieldFocus}
+            onBlur={handleFieldBlur}
           />
         </section>
 
@@ -83,6 +109,8 @@ export function Inspector() {
             value={selectedObject.scale}
             onChange={(scale) => updateScale(selectedObject.id, scale)}
             step={0.1}
+            onFocus={handleFieldFocus}
+            onBlur={handleFieldBlur}
           />
         </section>
 
@@ -93,19 +121,22 @@ export function Inspector() {
             <input
               type="color"
               value={objectColor}
+              onFocus={handleFieldFocus}
+              onBlur={handleFieldBlur}
               onChange={(e) => updateColor(selectedObject.id, e.target.value)}
               className="w-8 h-6 rounded cursor-pointer border-0 p-0"
             />
             <input
               type="text"
               value={objectColor}
+              onFocus={handleFieldFocus}
+              onBlur={handleFieldBlur}
               onChange={(e) => updateColor(selectedObject.id, e.target.value)}
               className="flex-1 w-full"
               placeholder="#ffffff"
             />
           </div>
         </section>
-
 
         {/* Text Overlay */}
         <section>
@@ -118,21 +149,25 @@ export function Inspector() {
           </button>
         </section>
       </div>
-    </aside >
+    </aside>
   )
 }
 
 /**
  * Vector3Input Component
- * Reusable component for editing [x, y, z] tuples.
+ * Reusable component for editing [x, y, z] tuples with undo support.
  */
 function Vector3Input({
   value,
   onChange,
+  onFocus,
+  onBlur,
   step = 0.1,
 }: {
   value: [number, number, number]
   onChange: (value: [number, number, number]) => void
+  onFocus?: () => void
+  onBlur?: () => void
   step?: number
 }) {
   const labels = ['X', 'Y', 'Z']
@@ -146,6 +181,8 @@ function Vector3Input({
           <input
             type="number"
             value={Number(value[i].toFixed(3))}
+            onFocus={onFocus}
+            onBlur={onBlur}
             onChange={(e) => {
               const newValue = [...value] as [number, number, number]
               newValue[i] = parseFloat(e.target.value) || 0
@@ -159,4 +196,3 @@ function Vector3Input({
     </div>
   )
 }
-

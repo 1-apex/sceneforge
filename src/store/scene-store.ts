@@ -8,12 +8,20 @@
  *
  * Architecture Decision: Using Zustand for its simplicity, performance,
  * and excellent TypeScript support. No need for context providers.
+ *
+ * Undo/Redo:
+ * - `past` holds snapshots of objects[] before each mutation.
+ * - `future` holds snapshots for redo after an undo.
+ * - Capped at 50 entries each direction to keep memory bounded.
+ * - Destructive mutations (add/remove/paste/textConfig) auto-snapshot.
+ * - Continuous mutations (gizmo drag, inspector inputs) are snapshotted
+ *   at their call sites (drag start / input focus) via pushHistory().
  */
 
 import { create } from 'zustand'
 
 // ============================================================================
-// TYPE DEFINITIONS - Exact schema as specified in requirements
+// TYPE DEFINITIONS
 // ============================================================================
 
 export type MeshType = 'box' | 'sphere' | 'cylinder' | 'rounded-box'
@@ -33,7 +41,6 @@ const DEFAULT_MESH_COLORS: Record<MeshType, string> = {
   'rounded-box': '#9d4ad9',
 }
 
-// Mesh object (box, sphere, cylinder)
 export interface MeshObject {
   id: string
   type: MeshType
@@ -46,22 +53,26 @@ export interface MeshObject {
   textConfig?: TextConfig
 }
 
-// Scene object is just MeshObject for now
 export type SceneObject = MeshObject
+
+const HISTORY_LIMIT = 50
 
 export type SceneState = {
   objects: SceneObject[]
   selectedObjectId: string | null
-  editingTextObjectId: string | null // Controls the text editor modal
-  clipboard: SceneObject | null  // Stores copied object for paste
+  editingTextObjectId: string | null
+  clipboard: SceneObject | null
+  // Undo/Redo history
+  past: SceneObject[][]
+  future: SceneObject[][]
 }
 
 // ============================================================================
-// ACTION TYPES - All mutations to scene state
+// ACTION TYPES
 // ============================================================================
 
 type SceneActions = {
-  // Object CRUD operations
+  // Object CRUD
   addObject: (type: ObjectType) => void
   removeObject: (id: string) => void
 
@@ -69,28 +80,29 @@ type SceneActions = {
   selectObject: (id: string | null) => void
   setEditingTextObjectId: (id: string | null) => void
 
-  // Transform updates - write back from gizmos and inspector
+  // Transform updates
   updatePosition: (id: string, position: [number, number, number]) => void
   updateRotation: (id: string, rotation: [number, number, number]) => void
   updateScale: (id: string, scale: [number, number, number]) => void
 
-  // Material/appearance updates
+  // Material/appearance
   updateColor: (id: string, color: string) => void
   updateTextConfig: (id: string, config: TextConfig | undefined) => void
 
-  // Copy/Paste for symmetrical designs
+  // Copy/Paste
   copySelectedObject: () => void
   pasteObject: () => void
+
+  // Undo/Redo
+  pushHistory: () => void
+  undo: () => void
+  redo: () => void
 }
 
 // ============================================================================
-// ID GENERATION - Deterministic and stable
+// ID GENERATION
 // ============================================================================
 
-/**
- * Counter-based ID generation ensures deterministic, stable IDs.
- * IDs are human-readable for easier debugging and cleaner JSX export.
- */
 let objectCounter = 0
 
 function generateId(type: ObjectType): string {
@@ -99,7 +111,7 @@ function generateId(type: ObjectType): string {
 }
 
 // ============================================================================
-// DEFAULT VALUES - Used when creating new objects
+// DEFAULT VALUES
 // ============================================================================
 
 const DEFAULT_TRANSFORMS = {
@@ -108,20 +120,26 @@ const DEFAULT_TRANSFORMS = {
   scale: [1, 1, 1] as [number, number, number],
 }
 
-
+/** Snapshot current objects into the past stack, clearing future. */
+function snapshotObjects(objects: SceneObject[], past: SceneObject[][]): SceneObject[][] {
+  return [...past.slice(-HISTORY_LIMIT + 1), objects]
+}
 
 // ============================================================================
 // STORE IMPLEMENTATION
 // ============================================================================
 
 export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
-  // Initial state - empty scene, nothing selected, empty clipboard
+  // Initial state
   objects: [],
   selectedObjectId: null,
   editingTextObjectId: null,
   clipboard: null,
+  past: [],
+  future: [],
 
-  // Add a new object with default transforms
+  // ── Object CRUD ────────────────────────────────────────────────────────────
+
   addObject: (type) => set((state) => {
     const newObject: SceneObject = {
       id: generateId(type),
@@ -129,32 +147,31 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
       position: [...DEFAULT_TRANSFORMS.position],
       rotation: [...DEFAULT_TRANSFORMS.rotation],
       scale: [...DEFAULT_TRANSFORMS.scale],
-      material: {
-        color: DEFAULT_MESH_COLORS[type],
-      },
-      // No text config by default
+      material: { color: DEFAULT_MESH_COLORS[type] },
     }
-
     return {
       objects: [...state.objects, newObject],
-      selectedObjectId: newObject.id, // Auto-select newly created object
+      selectedObjectId: newObject.id,
+      past: snapshotObjects(state.objects, state.past),
+      future: [],
     }
   }),
 
-  // Remove object and clear selection if it was selected
   removeObject: (id) => set((state) => ({
     objects: state.objects.filter((obj) => obj.id !== id),
     selectedObjectId: state.selectedObjectId === id ? null : state.selectedObjectId,
     editingTextObjectId: state.editingTextObjectId === id ? null : state.editingTextObjectId,
+    past: snapshotObjects(state.objects, state.past),
+    future: [],
   })),
 
-  // Set currently selected object
-  selectObject: (id) => set({ selectedObjectId: id }),
+  // ── Selection ──────────────────────────────────────────────────────────────
 
-  // Set object currently being edited for text
+  selectObject: (id) => set({ selectedObjectId: id }),
   setEditingTextObjectId: (id) => set({ editingTextObjectId: id }),
 
-  // Transform updates - immutably update the specific object
+  // ── Transform Updates (called from gizmo & inspector) ─────────────────────
+
   updatePosition: (id, position) => set((state) => ({
     objects: state.objects.map((obj) =>
       obj.id === id ? { ...obj, position } : obj
@@ -173,7 +190,8 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
     ),
   })),
 
-  // Color update
+  // ── Material ───────────────────────────────────────────────────────────────
+
   updateColor: (id, color) => set((state) => ({
     objects: state.objects.map((obj) => {
       if (obj.id !== id) return obj
@@ -181,45 +199,90 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
     }),
   })),
 
-  // Text Config Update
+  // Text config update - auto-snapshots (modal "Apply" is a commit action)
   updateTextConfig: (id, config) => set((state) => ({
     objects: state.objects.map((obj) => {
       if (obj.id !== id) return obj
       return { ...obj, textConfig: config }
     }),
+    past: snapshotObjects(state.objects, state.past),
+    future: [],
   })),
 
-  // Copy selected object to clipboard
+  // ── Copy/Paste ─────────────────────────────────────────────────────────────
+
   copySelectedObject: () => {
     const state = get()
     const selected = state.objects.find((obj) => obj.id === state.selectedObjectId)
     if (selected) {
-      // Deep clone the object
       set({ clipboard: JSON.parse(JSON.stringify(selected)) })
     }
   },
 
-  // Paste object from clipboard at viewport center (0,0,0)
+  // Paste with a small positional offset so both objects are visible
   pasteObject: () => set((state) => {
     if (!state.clipboard) return state
-
     const source = state.clipboard
-
-    // Clone the source object with new id and position at origin
     const newObject: SceneObject = {
       ...JSON.parse(JSON.stringify(source)),
       id: generateId(source.type),
-      position: [0, 0, 0] as [number, number, number],
+      position: [
+        source.position[0] + 0.5,
+        source.position[1],
+        source.position[2] + 0.5,
+      ] as [number, number, number],
     }
-
     return {
       objects: [...state.objects, newObject],
-      selectedObjectId: newObject.id, // Auto-select pasted object
+      selectedObjectId: newObject.id,
+      past: snapshotObjects(state.objects, state.past),
+      future: [],
+    }
+  }),
+
+  // ── Undo/Redo ──────────────────────────────────────────────────────────────
+
+  /**
+   * Snapshot current objects into history.
+   * Call this BEFORE starting a continuous edit (gizmo drag start, input focus).
+   */
+  pushHistory: () => set((state) => ({
+    past: snapshotObjects(state.objects, state.past),
+    future: [],
+  })),
+
+  undo: () => set((state) => {
+    if (state.past.length === 0) return state
+    const previous = state.past[state.past.length - 1]
+    // Preserve selection only if the selected object still exists
+    const newSelectedId = previous.some((o) => o.id === state.selectedObjectId)
+      ? state.selectedObjectId
+      : null
+    return {
+      past: state.past.slice(0, -1),
+      future: [state.objects, ...state.future.slice(0, HISTORY_LIMIT - 1)],
+      objects: previous,
+      selectedObjectId: newSelectedId,
+    }
+  }),
+
+  redo: () => set((state) => {
+    if (state.future.length === 0) return state
+    const next = state.future[0]
+    const newSelectedId = next.some((o) => o.id === state.selectedObjectId)
+      ? state.selectedObjectId
+      : null
+    return {
+      past: snapshotObjects(state.objects, state.past),
+      future: state.future.slice(1),
+      objects: next,
+      selectedObjectId: newSelectedId,
     }
   }),
 }))
 
-// Export selector helpers for optimized subscriptions
+// ── Selector Helpers ─────────────────────────────────────────────────────────
+
 export const selectObjects = (state: SceneState) => state.objects
 export const selectSelectedObjectId = (state: SceneState) => state.selectedObjectId
 export const selectEditingTextObjectId = (state: SceneState) => state.editingTextObjectId
@@ -227,3 +290,5 @@ export const selectSelectedObject = (state: SceneState & SceneActions) =>
   state.objects.find((obj) => obj.id === state.selectedObjectId) ?? null
 export const selectEditingTextObject = (state: SceneState & SceneActions) =>
   state.objects.find((obj) => obj.id === state.editingTextObjectId) ?? null
+export const selectCanUndo = (state: SceneState) => state.past.length > 0
+export const selectCanRedo = (state: SceneState) => state.future.length > 0

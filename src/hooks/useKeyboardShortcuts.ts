@@ -5,7 +5,9 @@
  *
  * Shortcuts:
  * - Ctrl/Cmd + C: Copy selected object
- * - Ctrl/Cmd + V: Paste object at origin (0,0,0)
+ * - Ctrl/Cmd + V: Paste object (offset from original)
+ * - Ctrl/Cmd + Z: Undo
+ * - Ctrl/Cmd + Y  |  Ctrl/Cmd + Shift + Z: Redo
  * - Delete/Backspace: Delete selected object
  */
 
@@ -19,6 +21,8 @@ export function useKeyboardShortcuts() {
   const pasteObject = useSceneStore((state) => state.pasteObject)
   const removeObject = useSceneStore((state) => state.removeObject)
   const selectedObjectId = useSceneStore((state) => state.selectedObjectId)
+  const undo = useSceneStore((state) => state.undo)
+  const redo = useSceneStore((state) => state.redo)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -33,6 +37,20 @@ export function useKeyboardShortcuts() {
 
       const isMod = e.ctrlKey || e.metaKey
 
+      // Ctrl/Cmd + Z: Undo
+      if (isMod && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        undo()
+        return
+      }
+
+      // Ctrl/Cmd + Y  or  Ctrl/Cmd + Shift + Z: Redo
+      if (isMod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault()
+        redo()
+        return
+      }
+
       // Ctrl/Cmd + C: Copy
       if (isMod && e.key.toLowerCase() === 'c') {
         e.preventDefault()
@@ -40,7 +58,7 @@ export function useKeyboardShortcuts() {
         return
       }
 
-      // Ctrl/Cmd + V: Paste at origin
+      // Ctrl/Cmd + V: Paste
       if (isMod && e.key.toLowerCase() === 'v') {
         e.preventDefault()
         pasteObject()
@@ -57,5 +75,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [copySelectedObject, pasteObject, removeObject, selectedObjectId])
+  }, [copySelectedObject, pasteObject, removeObject, selectedObjectId, undo, redo])
 }

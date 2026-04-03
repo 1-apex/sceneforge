@@ -1,16 +1,20 @@
 /**
  * TransformGizmo Component
- * 
+ *
  * Provides transform controls (translate, rotate, scale) for selected objects.
  * Uses @react-three/drei's TransformControls.
- * 
+ *
  * CRITICAL: All transform changes MUST write back to Zustand state.
  * The gizmo reads initial position from state and writes changes back.
  * No local transform state is maintained.
- * 
+ *
+ * Undo/Redo integration:
+ * - pushHistory() is called on mouseDown (drag start) so the entire drag
+ *   is a single undoable action.
+ *
  * Keyboard shortcuts:
  * - W: Translate mode
- * - E: Rotate mode  
+ * - E: Rotate mode
  * - R: Scale mode
  */
 
@@ -30,6 +34,7 @@ export function TransformGizmo() {
   const updatePosition = useSceneStore((state) => state.updatePosition)
   const updateRotation = useSceneStore((state) => state.updateRotation)
   const updateScale = useSceneStore((state) => state.updateScale)
+  const pushHistory = useSceneStore((state) => state.pushHistory)
 
   const [mode, setMode] = useState<TransformMode>('translate')
 
@@ -44,7 +49,6 @@ export function TransformGizmo() {
 
     const mesh = targetMesh as Object3D
 
-    // Read transforms from the mesh and write to store
     updatePosition(selectedObject.id, [
       mesh.position.x,
       mesh.position.y,
@@ -62,24 +66,21 @@ export function TransformGizmo() {
     ])
   }, [targetMesh, selectedObject, updatePosition, updateRotation, updateScale])
 
+  // Snapshot history at the start of each drag so the whole drag is one undo step
+  const handleMouseDown = useCallback(() => {
+    pushHistory()
+  }, [pushHistory])
+
   // Keyboard shortcuts for transform modes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
       }
-      
       switch (e.key.toLowerCase()) {
-        case 'w':
-          setMode('translate')
-          break
-        case 'e':
-          setMode('rotate')
-          break
-        case 'r':
-          setMode('scale')
-          break
+        case 'w': setMode('translate'); break
+        case 'e': setMode('rotate'); break
+        case 'r': setMode('scale'); break
       }
     }
 
@@ -87,7 +88,6 @@ export function TransformGizmo() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Don't render if nothing is selected or mesh not found
   if (!selectedObject || !targetMesh) {
     return null
   }
@@ -97,8 +97,8 @@ export function TransformGizmo() {
       object={targetMesh}
       mode={mode}
       onObjectChange={handleChange}
+      onMouseDown={handleMouseDown}
       size={0.7}
     />
   )
 }
-
