@@ -6,72 +6,63 @@ import { OrbitControls, Text, RoundedBox } from '@react-three/drei'
 import { useSceneStore, selectEditingTextObject, TextConfig, MeshType } from '@/store/scene-store'
 
 export function TextEditorModal() {
-    const editingObject = useSceneStore(selectEditingTextObject)
+    const editingObject         = useSceneStore(selectEditingTextObject)
     const setEditingTextObjectId = useSceneStore((state) => state.setEditingTextObjectId)
-    const updateTextConfig = useSceneStore((state) => state.updateTextConfig)
+    const updateTextConfig       = useSceneStore((state) => state.updateTextConfig)
 
     const isEditing = !!editingObject?.textConfig
 
     const [config, setConfig] = useState<TextConfig>({
-        content: '',
-        fontSize: 0.5,
-        color: '#ffffff',
-        alignment: 'center'
+        content: '', fontSize: 0.5, color: '#ffffff', alignment: 'center',
     })
 
-    // Initialize state when modal opens
     useEffect(() => {
-        if (editingObject) {
-            if (editingObject.textConfig) {
-                setConfig(editingObject.textConfig)
-            } else {
-                const minDimension = Math.min(editingObject.scale[0], editingObject.scale[1])
-                setConfig({
-                    content: 'Text',
-                    fontSize: minDimension * 0.4,
-                    color: '#ffffff',
-                    alignment: 'center'
-                })
-            }
+        if (!editingObject) return
+        if (editingObject.textConfig) {
+            setConfig(editingObject.textConfig)
+        } else {
+            const m = Math.min(editingObject.scale[0], editingObject.scale[1])
+            setConfig({ content: 'Text', fontSize: m * 0.4, color: '#ffffff', alignment: 'center' })
         }
     }, [editingObject])
 
     if (!editingObject) return null
 
-    const handleClose = () => {
-        setEditingTextObjectId(null)
-    }
-
-    const handleApply = () => {
-        updateTextConfig(editingObject.id, config)
-        handleClose()
-    }
-
-    const handleRemoveText = () => {
-        updateTextConfig(editingObject.id, undefined)
-        handleClose()
-    }
+    const handleClose  = () => setEditingTextObjectId(null)
+    const handleApply  = () => { updateTextConfig(editingObject.id, config); handleClose() }
+    const handleRemove = () => { updateTextConfig(editingObject.id, undefined); handleClose() }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="w-[800px] h-[500px] bg-[#1e1e1e] border border-[#3d3d3d] rounded-lg shadow-2xl flex overflow-hidden">
-
-                {/* Left Panel - 3D Preview */}
-                <div className="flex-1 bg-[#151515] relative border-r border-[#3d3d3d]">
-                    <div className="absolute top-2 left-2 z-10 text-xs text-[#737373] uppercase tracking-wider font-medium">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+        >
+            <div
+                className="flex overflow-hidden rounded-2xl shadow-2xl"
+                style={{
+                    width: 820,
+                    height: 510,
+                    background: '#18181c',
+                    border: '1px solid #2d2d35',
+                    boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)',
+                }}
+            >
+                {/* ── Left: 3D Preview ── */}
+                <div className="flex-1 relative" style={{ background: '#0e0e11', borderRight: '1px solid #222228' }}>
+                    <div
+                        className="absolute top-3 left-3 z-10 text-[9.5px] font-semibold uppercase tracking-widest px-2 py-1 rounded"
+                        style={{ background: 'rgba(14,14,17,0.8)', color: '#3d3b45', border: '1px solid #1e1e22' }}
+                    >
                         Preview
                     </div>
+
                     <Canvas camera={{ position: [3, 3, 3], fov: 50 }}>
-                        <ambientLight intensity={0.5} />
+                        <ambientLight intensity={0.45} />
                         <directionalLight position={[10, 10, 5]} intensity={1} />
                         <OrbitControls makeDefault enablePan={false} />
 
                         <group>
-                            <PreviewMesh
-                                type={editingObject.type}
-                                color={editingObject.material.color}
-                                scale={editingObject.scale}
-                            />
+                            <PreviewMesh type={editingObject.type} color={editingObject.material.color} scale={editingObject.scale} />
                             <group position={[0, 0, (editingObject.scale[2] / 2) + 0.01]}>
                                 <Text
                                     fontSize={config.fontSize}
@@ -80,11 +71,10 @@ export function TextEditorModal() {
                                     anchorY="middle"
                                     textAlign={config.alignment}
                                     maxWidth={editingObject.scale[0] * 0.9}
-                                    // @ts-expect-error curveRadius is not a valid prop
+                                    // @ts-expect-error curveRadius is valid
                                     curveRadius={
                                         (editingObject.type === 'cylinder' || editingObject.type === 'sphere')
-                                            ? -editingObject.scale[0] / 2
-                                            : undefined
+                                            ? -editingObject.scale[0] / 2 : undefined
                                     }
                                 >
                                     {config.content}
@@ -92,121 +82,137 @@ export function TextEditorModal() {
                             </group>
                         </group>
 
-                        <gridHelper args={[10, 10, '#333', '#222']} />
+                        <gridHelper args={[10, 10, '#1a1a22', '#111118']} />
                     </Canvas>
-                    <div className="absolute bottom-2 left-0 w-full text-center text-[10px] text-[#525252]">
-                        Drag to rotate · Scroll to zoom
+
+                    <div className="absolute bottom-3 left-0 w-full text-center text-[10px]" style={{ color: '#3d3b45' }}>
+                        Drag to orbit · Scroll to zoom
                     </div>
                 </div>
 
-                {/* Right Panel - Controls */}
-                <div className="w-80 flex flex-col bg-[#242424]">
-                    <div className="h-12 border-b border-[#3d3d3d] flex items-center px-4 justify-between">
-                        <h2 className="text-sm font-medium text-[#e5e5e5]">
-                            {isEditing ? 'Edit Text' : 'Add Text'}
-                        </h2>
+                {/* ── Right: Controls ── */}
+                <div className="w-[300px] flex flex-col">
+                    {/* Header */}
+                    <div
+                        className="h-12 px-4 flex items-center justify-between shrink-0"
+                        style={{ borderBottom: '1px solid #222228' }}
+                    >
+                        <div className="flex items-center gap-2">
+                            <div
+                                className="w-6 h-6 rounded-lg flex items-center justify-center"
+                                style={{ background: 'rgba(97,123,255,0.15)', border: '1px solid rgba(97,123,255,0.25)' }}
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#617bff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                </svg>
+                            </div>
+                            <h2 className="text-sm font-semibold" style={{ color: '#eae8e5' }}>
+                                {isEditing ? 'Edit Text' : 'Add Text'}
+                            </h2>
+                        </div>
                         <button
                             onClick={handleClose}
-                            className="text-[#737373] hover:text-white transition-colors w-6 h-6 flex items-center justify-center rounded hover:bg-[#3d3d3d]"
-                            title="Close"
+                            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all text-sm"
+                            style={{ color: '#4e4c58', background: 'transparent' }}
+                            onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.background = '#28282f'; el.style.color = '#eae8e5' }}
+                            onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent'; el.style.color = '#4e4c58' }}
                         >
                             ✕
                         </button>
                     </div>
 
-                    <div className="flex-1 p-4 space-y-5 overflow-y-auto">
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5">
 
-                        {/* Content Input */}
-                        <div className="space-y-2">
-                            <label className="text-xs text-[#a3a3a3]">Text Content</label>
+                        {/* Content */}
+                        <Field label="Text Content">
                             <textarea
                                 value={config.content}
                                 onChange={(e) => setConfig({ ...config, content: e.target.value })}
-                                className="w-full bg-[#1e1e1e] border border-[#3d3d3d] rounded p-2 text-sm text-white focus:outline-none focus:border-[#4a90d9] min-h-[80px] resize-none"
-                                placeholder="Enter text..."
+                                placeholder="Enter text…"
+                                rows={3}
+                                className="w-full"
                             />
-                        </div>
+                        </Field>
 
-                        {/* Font Size */}
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-xs">
-                                <label className="text-[#a3a3a3]">Size</label>
-                                <span className="text-[#737373] font-mono">{config.fontSize.toFixed(1)}</span>
-                            </div>
+                        {/* Font size */}
+                        <Field label={<span>Font Size <span className="font-mono" style={{ color: '#617bff' }}>{config.fontSize.toFixed(2)}</span></span>}>
                             <input
-                                type="range"
-                                min="0.1"
-                                max="2"
-                                step="0.05"
+                                type="range" min="0.05" max="2" step="0.05"
                                 value={config.fontSize}
                                 onChange={(e) => setConfig({ ...config, fontSize: parseFloat(e.target.value) })}
-                                className="w-full h-1 bg-[#3d3d3d] rounded-lg appearance-none cursor-pointer accent-[#4a90d9]"
+                                className="w-full"
                             />
-                        </div>
+                        </Field>
 
                         {/* Color */}
-                        <div className="space-y-2">
-                            <label className="text-xs text-[#a3a3a3]">Color</label>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="color"
-                                    value={config.color}
-                                    onChange={(e) => setConfig({ ...config, color: e.target.value })}
-                                    className="w-8 h-8 rounded cursor-pointer border-0 p-0 flex-shrink-0"
-                                />
+                        <Field label="Color">
+                            <div className="flex gap-2">
+                                <div
+                                    className="relative w-9 h-8 rounded-md overflow-hidden shrink-0"
+                                    style={{ border: '1.5px solid rgba(255,255,255,0.1)' }}
+                                >
+                                    <input
+                                        type="color"
+                                        value={config.color}
+                                        onChange={(e) => setConfig({ ...config, color: e.target.value })}
+                                        className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+                                        style={{ margin: '-4px' }}
+                                    />
+                                    <div className="absolute inset-0 rounded-[4px]" style={{ background: config.color }} />
+                                </div>
                                 <input
                                     type="text"
                                     value={config.color}
                                     onChange={(e) => setConfig({ ...config, color: e.target.value })}
-                                    className="flex-1 bg-[#1e1e1e] border border-[#3d3d3d] rounded px-2 py-1.5 text-xs text-[#e5e5e5] uppercase focus:outline-none focus:border-[#4a90d9]"
+                                    className="flex-1 uppercase font-mono"
+                                    maxLength={7}
                                 />
                             </div>
-                        </div>
+                        </Field>
 
                         {/* Alignment */}
-                        <div className="space-y-2">
-                            <label className="text-xs text-[#a3a3a3]">Alignment</label>
-                            <div className="grid grid-cols-3 gap-1 bg-[#1e1e1e] p-1 rounded border border-[#3d3d3d]">
+                        <Field label="Alignment">
+                            <div
+                                className="grid grid-cols-3 gap-1 p-1 rounded-lg"
+                                style={{ background: '#111114', border: '1px solid #222228' }}
+                            >
                                 {(['left', 'center', 'right'] as const).map((align) => (
                                     <button
                                         key={align}
                                         onClick={() => setConfig({ ...config, alignment: align })}
-                                        className={`text-xs py-1 rounded capitalize transition-colors ${
+                                        className="py-1.5 rounded-md text-xs font-medium capitalize transition-all"
+                                        style={
                                             config.alignment === align
-                                                ? 'bg-[#4a90d9] text-white'
-                                                : 'text-[#737373] hover:text-[#a3a3a3]'
-                                        }`}
+                                                ? { background: '#617bff', color: '#fff' }
+                                                : { background: 'transparent', color: '#4e4c58' }
+                                        }
+                                        onMouseEnter={(e) => {
+                                            if (config.alignment !== align) {
+                                                (e.currentTarget as HTMLElement).style.color = '#8f8d98'
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (config.alignment !== align) {
+                                                (e.currentTarget as HTMLElement).style.color = '#4e4c58'
+                                            }
+                                        }}
                                     >
                                         {align}
                                     </button>
                                 ))}
                             </div>
-                        </div>
+                        </Field>
                     </div>
 
-                    {/* Footer Actions */}
-                    <div className="p-4 border-t border-[#3d3d3d] space-y-2">
+                    {/* Footer */}
+                    <div className="px-4 pb-4 flex flex-col gap-2 shrink-0" style={{ borderTop: '1px solid #1e1e22', paddingTop: '12px' }}>
                         <div className="flex gap-2">
-                            <button
-                                onClick={handleClose}
-                                className="flex-1 px-4 py-2 text-xs font-medium text-[#e5e5e5] bg-[#3d3d3d] hover:bg-[#4a4a4a] rounded transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleApply}
-                                className="flex-1 px-4 py-2 text-xs font-medium text-white bg-[#4a90d9] hover:bg-[#3a7bc2] rounded transition-colors"
-                            >
-                                Apply
-                            </button>
+                            <ModalBtn onClick={handleClose} variant="ghost">Cancel</ModalBtn>
+                            <ModalBtn onClick={handleApply} variant="primary">Apply</ModalBtn>
                         </div>
                         {isEditing && (
-                            <button
-                                onClick={handleRemoveText}
-                                className="w-full px-4 py-2 text-xs font-medium text-red-400 bg-transparent hover:bg-red-500/10 border border-red-500/30 hover:border-red-500/60 rounded transition-colors"
-                            >
-                                Remove Text
-                            </button>
+                            <ModalBtn onClick={handleRemove} variant="danger">Remove Text Overlay</ModalBtn>
                         )}
                     </div>
                 </div>
@@ -215,41 +221,54 @@ export function TextEditorModal() {
     )
 }
 
-function PreviewMesh({ type, color, scale }: { type: MeshType; color: string, scale: [number, number, number] }) {
+/* ── Helpers ─────────────────────────────────────────────────────────── */
+
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-2">
+            <label className="text-[10.5px] font-semibold uppercase tracking-widest" style={{ color: '#4e4c58' }}>
+                {label}
+            </label>
+            {children}
+        </div>
+    )
+}
+
+type ModalBtnVariant = 'primary' | 'ghost' | 'danger'
+function ModalBtn({ onClick, variant, children }: { onClick: () => void; variant: ModalBtnVariant; children: React.ReactNode }) {
+    const styles: Record<ModalBtnVariant, React.CSSProperties> = {
+        primary: { background: '#617bff', color: '#fff', border: '1px solid transparent' },
+        ghost:   { background: '#212128', color: '#8f8d98', border: '1px solid #2d2d35' },
+        danger:  { background: 'transparent', color: '#f04a6a', border: '1px solid rgba(240,74,106,0.3)' },
+    }
+    const hover: Record<ModalBtnVariant, React.CSSProperties> = {
+        primary: { background: '#4f69f5' },
+        ghost:   { background: '#28282f', color: '#eae8e5' },
+        danger:  { background: 'rgba(240,74,106,0.1)', borderColor: 'rgba(240,74,106,0.5)' },
+    }
+
+    return (
+        <button
+            onClick={onClick}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={styles[variant]}
+            onMouseEnter={(e) => Object.assign((e.currentTarget as HTMLElement).style, hover[variant])}
+            onMouseLeave={(e) => Object.assign((e.currentTarget as HTMLElement).style, styles[variant])}
+        >
+            {children}
+        </button>
+    )
+}
+
+function PreviewMesh({ type, color, scale }: { type: MeshType; color: string; scale: [number, number, number] }) {
     switch (type) {
-        case 'box':
-            return (
-                <mesh scale={scale}>
-                    <boxGeometry args={[1, 1, 1]} />
-                    <meshStandardMaterial color={color} />
-                </mesh>
-            )
         case 'sphere':
-            return (
-                <mesh scale={scale}>
-                    <sphereGeometry args={[0.5, 32, 32]} />
-                    <meshStandardMaterial color={color} />
-                </mesh>
-            )
+            return <mesh scale={scale}><sphereGeometry args={[0.5, 32, 32]} /><meshStandardMaterial color={color} /></mesh>
         case 'cylinder':
-            return (
-                <mesh scale={scale}>
-                    <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
-                    <meshStandardMaterial color={color} />
-                </mesh>
-            )
+            return <mesh scale={scale}><cylinderGeometry args={[0.5, 0.5, 1, 32]} /><meshStandardMaterial color={color} /></mesh>
         case 'rounded-box':
-            return (
-                <RoundedBox args={[1, 1, 1]} radius={0.15} smoothness={4} scale={scale}>
-                    <meshStandardMaterial color={color} />
-                </RoundedBox>
-            )
+            return <RoundedBox args={[1, 1, 1]} radius={0.15} smoothness={4} scale={scale}><meshStandardMaterial color={color} /></RoundedBox>
         default:
-            return (
-                <mesh scale={scale}>
-                    <boxGeometry args={[1, 1, 1]} />
-                    <meshStandardMaterial color={color} />
-                </mesh>
-            )
+            return <mesh scale={scale}><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color={color} /></mesh>
     }
 }
